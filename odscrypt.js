@@ -1,12 +1,12 @@
 /*
- * Parola korumalı ODS dosyalarını tarayıcıda çözer ve şifresiz bir ODS (zip) döndürür.
+ * ODS paketini açar; parola korumalıysa tarayıcıda çözer ve paketteki dosyaları (yol → bayt) döndürür.
  *
  * Desteklenen şifrelemeler:
  *  - LibreOffice 24.2+ "wholesome": Argon2id + AES-256-GCM, tüm paket tek "encrypted-package" girdisinde
  *  - ODF 1.2/1.3: PBKDF2 (HMAC-SHA1) + AES-256-CBC, her dosya ayrı şifreli
  * Desteklenmeyen: OpenOffice 2.x / ODF 1.1 dönemi Blowfish-CFB.
  *
- * Bağımlılıklar: XLSX (SheetJS, XLSX.CFB zip okuyup yazmak için), hashwasm.argon2id (yalnızca Argon2 için).
+ * Bağımlılıklar: hashwasm.argon2id (yalnızca Argon2 için).
  */
 (function (root) {
   'use strict';
@@ -87,15 +87,6 @@
       else throw new Error('Desteklenmeyen zip sıkıştırması: ' + method);
     }
     return files;
-  }
-
-  function writeZip(files) {
-    const zip = XLSX.CFB.utils.cfb_new();
-    // ODF: "mimetype" ilk girdi olmalı
-    const order = [...files.keys()].sort((a, b) => (a === 'mimetype' ? -1 : b === 'mimetype' ? 1 : 0));
-    for (const p of order) XLSX.CFB.utils.cfb_add(zip, p, files.get(p));
-    XLSX.CFB.utils.cfb_del(zip, '\u0001Sh33tJ5'); // SheetJS'in eklediği yer tutucu
-    return new Uint8Array(XLSX.CFB.write(zip, { fileType: 'zip', type: 'array', compression: true }));
   }
 
   async function inflateRaw(bytes) {
@@ -233,46 +224,36 @@
     }
   }
 
-  // Şifreli girdileri çözer (parola gerekiyorsa) veya atar; şifresiz bir ODS döndürür.
-  // Şifreli girdi yoksa dosyayı olduğu gibi geri verir.
-  async function decrypt(bytes, password) {
+  // Paketi açar: şifreli girdileri çözer (parola gerekiyorsa) veya atar.
+  // Dönüş: Map<yol, Uint8Array> — şifresiz ODS paketinin dosyaları.
+  async function unpack(bytes, password) {
     const files = await readZip(bytes);
-    const { manifest, encrypted } = encryptedEntries(files);
-    if (!encrypted.length) return bytes;
+    const { encrypted } = encryptedEntries(files);
+    if (!encrypted.length) return files;
 
     // LibreOffice 24.2+: tüm paket tek girdi
     const pkg = encrypted.find((e) => e.attrs['manifest:full-path'] === 'encrypted-package');
     if (pkg) {
       const data = files.get('encrypted-package');
       if (!data) throw new Error('encrypted-package bulunamadı');
+      if (password == null) throw new WrongPasswordError();
       const plain = await decryptEntry(pkg.enc, password, data);
       const inner = plain[0] === 0x50 && plain[1] === 0x4b ? plain : await inflateRaw(plain);
       if (inner[0] !== 0x50 || inner[1] !== 0x4b) throw new WrongPasswordError();
-      return inner;
+      return unpack(inner, password);
     }
 
     // ODF 1.2/1.3: dosya başına şifreleme
-    let newManifest = manifest;
     for (const e of encrypted) {
       const path = e.attrs['manifest:full-path'];
       const data = files.get(path);
       if (!data) continue;
-      if (!ESSENTIAL.test(path)) {
-        files.delete(path);
-        newManifest = newManifest.replace(e.raw, '');
-        continue;
-      }
+      if (!ESSENTIAL.test(path)) { files.delete(path); continue; }
       if (password == null) throw new WrongPasswordError();
-      const plain = await decryptEntry(e.enc, password, data);
-      files.set(path, await tryInflate(plain));
-      const stripped = e.raw
-        .replace(/\s*<manifest:encryption-data[\s\S]*?<\/manifest:encryption-data>\s*/, '')
-        .replace(/>\s*<\/manifest:file-entry>$/, '/>');
-      newManifest = newManifest.replace(e.raw, stripped);
+      files.set(path, await tryInflate(await decryptEntry(e.enc, password, data)));
     }
-    files.set('META-INF/manifest.xml', new TextEncoder().encode(newManifest));
-    return writeZip(files);
+    return files;
   }
 
-  root.OdsCrypt = { needsPassword, decrypt, WrongPasswordError };
+  root.OdsCrypt = { readZip, needsPassword, unpack, WrongPasswordError };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

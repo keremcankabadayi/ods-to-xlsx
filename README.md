@@ -12,13 +12,25 @@ OpenDocument tablolarını (`.ods`, `.fods`) Excel'in `.xlsx` formatına dönü�
 
   Sadece makro kütüphanesi parolalı olan (verisi açık) dosyalar parola sorulmadan dönüştürülür; şifreli makrolar atlanır.
   Doğru girilen parola, aynı oturumdaki diğer şifreli dosyalarda otomatik denenir. Eski Blowfish şifrelemesi (OpenOffice 2.x) desteklenmez.
-- Build adımı yok; düz HTML, CSS ve JS. `vendor/` altında gömülü: [SheetJS](https://sheetjs.com) 0.20.3, [hash-wasm](https://github.com/Daninet/hash-wasm) 4.13.0 (Argon2).
+- ODS'nin XML'i doğrudan okunur (`ods2xlsx.js`) ve xlsx [ExcelJS](https://github.com/exceljs/exceljs) ile yazılır.
+  Formüller LibreOffice sözdiziminden (`[.A1];[Sayfa.B2]`) Excel sözdizimine (`A1,Sayfa!B2`) çevrilir.
+- Build adımı yok; düz HTML, CSS ve JS. `vendor/` altında gömülü: ExcelJS 4.4.0, [hash-wasm](https://github.com/Daninet/hash-wasm) 4.13.0 (Argon2).
 
 ## Neler korunur
 
 | Korunur | Korunmaz |
 | --- | --- |
-| Veriler, tüm sayfalar, formüller, birleştirilmiş hücreler, sütun genişlikleri, tarihler | Hücre renkleri, yazı tipleri, kenarlıklar, grafikler, resimler, makrolar |
+| Veriler, tüm sayfalar, formüller (Excel sözdizimine çevrilir) | Makrolar |
+| Yazı tipleri, renkler, dolgular, kenarlıklar, hizalama, metin kaydırma, döndürme | Grafikler, şekiller, düğmeler |
+| Sayı / tarih / saat biçimleri | Koşullu biçimlendirme |
+| Birleştirilmiş hücreler, sütun genişlikleri, satır yükseklikleri, gizli satır/sütun, gruplar | EMF/WMF/SVM çizimler (PNG yedeği varsa o kullanılır) |
+| Açılır listeler (veri doğrulama), köprüler, notlar | Sayfa koruma parolası (sayfalar parolasız korumalı açılır) |
+| Resimler (PNG/JPEG/GIF), sekme renkleri, gizli sayfalar, dondurulmuş bölmeler | Üstbilgi / altbilgi |
+| Tanımlı adlar, yazdırma alanları, sayfa yapısı (kağıt, yön, kenar boşluğu, sığdırma), otomatik filtre | |
+
+Gerçek bir 13 sayfalık LibreOffice dosyasında, LibreOffice'in kendi "xlsx olarak kaydet" çıktısıyla hücre hücre
+karşılaştırıldığında değerler, formüller (38 bin), dolgular, kenarlıklar, birleştirmeler, sütun/satır ölçüleri,
+veri doğrulamaları ve yazdırma alanları birebir eşleşmektedir.
 
 ## Yerelde çalıştırma
 
@@ -29,4 +41,4 @@ python3 -m http.server 8000
 
 ## Lisans
 
-MIT. SheetJS Apache 2.0 (`vendor/xlsx-LICENSE`), hash-wasm MIT (`vendor/hash-wasm-LICENSE`) lisanslıdır.
+MIT. ExcelJS MIT (`vendor/exceljs-LICENSE`), hash-wasm MIT (`vendor/hash-wasm-LICENSE`) lisanslıdır.

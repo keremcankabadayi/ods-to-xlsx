@@ -36,22 +36,26 @@
     <details class="notes">
       <summary>Neler korunur, neler korunmaz?</summary>
       <ul>
-        <li>✔ Veriler, tüm sayfalar, formüller, birleştirilmiş hücreler, sütun genişlikleri, tarihler</li>
+        <li>✔ Veriler, tüm sayfalar ve formüller (Excel sözdizimine çevrilir)</li>
+        <li>✔ Hücre renkleri, yazı tipleri, kenarlıklar, hizalama, sayı ve tarih biçimleri</li>
+        <li>✔ Birleştirilmiş hücreler, sütun genişlikleri, satır yükseklikleri, gizli satır/sütunlar</li>
+        <li>✔ Açılır listeler, resimler, sekme renkleri, sayfa koruması, yazdırma alanı ve sayfa yapısı</li>
         <li>✔ Parola korumalı dosyalar (parolayı siz girersiniz, o da tarayıcıdan çıkmaz)</li>
-        <li>✘ Hücre renkleri, yazı tipleri, kenarlıklar gibi biçimlendirmeler büyük ölçüde kaybolur</li>
-        <li>✘ Grafikler, resimler ve makrolar aktarılmaz</li>
+        <li>✘ Makrolar, grafikler, çizim nesneleri (şekiller, düğmeler) ve koşullu biçimlendirme aktarılmaz</li>
+        <li>✘ Sayfa koruma parolaları taşınamaz; sayfalar Excel'de parolasız korumalı açılır</li>
       </ul>
     </details>
 
     <footer>
       <a href="https://github.com/keremcankabadayi/ods-to-xlsx">Kaynak kodu</a> ·
-      <a href="https://sheetjs.com">SheetJS</a> ile çalışır
+      <a href="https://github.com/exceljs/exceljs">ExcelJS</a> ile çalışır
     </footer>
   </main>
 
-  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/exceljs.min.js"></script>
   <script src="vendor/hash-wasm-argon2.min.js"></script>
   <script src="odscrypt.js"></script>
+  <script src="ods2xlsx.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

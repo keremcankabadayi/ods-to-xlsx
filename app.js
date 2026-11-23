@@ -57,7 +57,7 @@
 
   async function tryPassword(bytes, password) {
     try {
-      return await OdsCrypt.decrypt(bytes, password);
+      return await OdsCrypt.unpack(bytes, password);
     } catch (err) {
       if (err instanceof OdsCrypt.WrongPasswordError) return null;
       throw err;
@@ -132,29 +132,28 @@
     const info = li.querySelector('.info');
     try {
       if (!/\.f?ods$/i.test(file.name)) throw new Error('Bu bir .ods dosyası değil');
-      let data = new Uint8Array(await file.arrayBuffer());
+      const data = new Uint8Array(await file.arrayBuffer());
       if (!looksLikeOds(file.name, data.buffer)) throw new Error('Geçerli bir ODS dosyası değil');
-      if (/\.ods$/i.test(file.name)) {
-        if (await OdsCrypt.needsPassword(data)) {
-          data = await unlock(li, data);
-          li.className = 'item pending';
-          info.textContent = 'Dönüştürülüyor…';
-        } else {
-          // Verisi açık ama makro gibi şifreli ekleri olan dosyalar: ekleri at
-          data = await OdsCrypt.decrypt(data, null);
-        }
+      let source; // .ods: paket dosyaları (Map), .fods: XML metni
+      if (/\.fods$/i.test(file.name)) {
+        source = new TextDecoder().decode(data);
+      } else if (await OdsCrypt.needsPassword(data)) {
+        source = await unlock(li, data);
+        li.className = 'item pending';
+      } else {
+        // Verisi açık ama makro gibi şifreli ekleri olabilir; unpack bunları atar
+        source = await OdsCrypt.unpack(data, null);
       }
-      const wb = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
-      if (!wb.SheetNames.length) throw new Error('Dosyada sayfa bulunamadı');
-
-      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true, cellStyles: true });
-      const blob = new Blob([out], { type: XLSX_MIME });
+      info.textContent = 'Dönüştürülüyor… (büyük dosyalarda birkaç saniye sürebilir)';
+      await new Promise((r) => setTimeout(r, 30)); // mesajın ekrana çizilmesine fırsat ver
+      const result = await OdsToXlsx.convert(source);
+      const blob = new Blob([result.data], { type: XLSX_MIME });
       const url = URL.createObjectURL(blob);
       const name = outName(file.name);
       converted.push({ name, url });
 
       li.className = 'item done';
-      info.textContent = `${wb.SheetNames.length} sayfa · ${formatSize(blob.size)}`;
+      info.textContent = `${result.sheets} sayfa · ${formatSize(blob.size)}`;
       const btn = document.createElement('a');
       btn.className = 'btn';
       btn.href = url;
