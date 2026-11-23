@@ -50,13 +50,95 @@
     return li;
   }
 
-  async function convert(file) {
-    const li = addRow(file);
+  // --- Parola korumalı dosyalar ---
+  // Doğru girilen son parola, sonraki şifreli dosyalarda önce otomatik denenir.
+  let lastPassword = null;
+  const waiting = new Set(); // parola bekleyen satırların yeniden deneme fonksiyonları
+
+  async function tryPassword(bytes, password) {
+    try {
+      return await OdsCrypt.decrypt(bytes, password);
+    } catch (err) {
+      if (err instanceof OdsCrypt.WrongPasswordError) return null;
+      throw err;
+    }
+  }
+
+  function notifyPassword(password) {
+    lastPassword = password;
+    for (const retry of [...waiting]) retry(password);
+  }
+
+  function askPassword(li, bytes) {
+    const info = li.querySelector('.info');
+    return new Promise((resolve, reject) => {
+      const form = document.createElement('form');
+      form.className = 'pw';
+      form.innerHTML = '<input type="password" autocomplete="off" placeholder="Parola" aria-label="Parola">' +
+        '<button type="submit">Aç</button>';
+      const field = form.querySelector('input');
+      const submit = form.querySelector('button');
+      li.className = 'item locked';
+      info.textContent = 'Bu dosya parola korumalı';
+      li.appendChild(form);
+      if (!document.querySelector('.pw input:focus')) field.focus();
+
+      let busy = false;
+      const finish = (plain, password) => {
+        waiting.delete(retry);
+        form.remove();
+        resolve(plain);
+        if (password !== lastPassword) notifyPassword(password);
+      };
+      const attempt = async (password, auto) => {
+        if (busy) return;
+        busy = true;
+        submit.disabled = true;
+        info.textContent = 'Parola kontrol ediliyor…';
+        try {
+          const plain = await tryPassword(bytes, password);
+          if (plain) return finish(plain, password);
+          info.textContent = auto ? 'Bu dosya parola korumalı' : 'Parola yanlış, tekrar deneyin';
+          if (!auto) { field.select(); }
+        } catch (err) {
+          waiting.delete(retry);
+          form.remove();
+          reject(err);
+        } finally {
+          busy = false;
+          submit.disabled = false;
+        }
+      };
+      const retry = (password) => attempt(password, true);
+      waiting.add(retry);
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (field.value) attempt(field.value, false);
+      });
+    });
+  }
+
+  async function unlock(li, bytes) {
+    if (lastPassword !== null) {
+      li.querySelector('.info').textContent = 'Önceki parola deneniyor…';
+      const plain = await tryPassword(bytes, lastPassword);
+      if (plain) return plain;
+    }
+    return askPassword(li, bytes);
+  }
+
+  async function convert(file, li) {
     const info = li.querySelector('.info');
     try {
       if (!/\.f?ods$/i.test(file.name)) throw new Error('Bu bir .ods dosyası değil');
-      const data = await file.arrayBuffer();
-      if (!looksLikeOds(file.name, data)) throw new Error('Geçerli bir ODS dosyası değil');
+      let data = new Uint8Array(await file.arrayBuffer());
+      if (!looksLikeOds(file.name, data.buffer)) throw new Error('Geçerli bir ODS dosyası değil');
+      if (/\.ods$/i.test(file.name) && await OdsCrypt.isEncrypted(data)) {
+        data = await unlock(li, data);
+        li.className = 'item pending';
+        info.textContent = 'Dönüştürülüyor…';
+      }
       const wb = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
       if (!wb.SheetNames.length) throw new Error('Dosyada sayfa bulunamadı');
 
@@ -82,8 +164,10 @@
     downloadAllBtn.hidden = converted.length < 2;
   }
 
-  async function handleFiles(files) {
-    for (const f of files) await convert(f);
+  function handleFiles(files) {
+    // Satırlar sırayla eklenir, dönüşümler paralel yürür; böylece parola bekleyen
+    // bir dosya diğerlerini bloklamaz.
+    return Promise.all(files.map((f) => convert(f, addRow(f))));
   }
 
   input.addEventListener('change', () => {
@@ -117,6 +201,7 @@
   });
 
   clearBtn.addEventListener('click', () => {
+    waiting.clear();
     converted.forEach(({ url }) => URL.revokeObjectURL(url));
     converted.length = 0;
     list.innerHTML = '';

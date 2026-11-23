@@ -37,6 +37,7 @@
       <summary>Neler korunur, neler korunmaz?</summary>
       <ul>
         <li>✔ Veriler, tüm sayfalar, formüller, birleştirilmiş hücreler, sütun genişlikleri, tarihler</li>
+        <li>✔ Parola korumalı dosyalar (parolayı siz girersiniz, o da tarayıcıdan çıkmaz)</li>
         <li>✘ Hücre renkleri, yazı tipleri, kenarlıklar gibi biçimlendirmeler büyük ölçüde kaybolur</li>
         <li>✘ Grafikler, resimler ve makrolar aktarılmaz</li>
       </ul>
@@ -49,6 +50,8 @@
   </main>
 
   <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/hash-wasm-argon2.min.js"></script>
+  <script src="odscrypt.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

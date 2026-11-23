@@ -6,7 +6,12 @@ OpenDocument tablolarını (`.ods`, `.fods`) Excel'in `.xlsx` formatına dönü�
 
 - Dönüşüm tamamen tarayıcıda yapılır, dosyalar hiçbir sunucuya yüklenmez.
 - Sürükle-bırak, birden fazla dosyayı aynı anda dönüştürme.
-- Build adımı yok; düz HTML, CSS ve JS. [SheetJS](https://sheetjs.com) `vendor/` klasörüne gömülü (0.20.3).
+- **Parola korumalı ODS desteği** (`odscrypt.js`):
+  - LibreOffice 24.2+ varsayılanı: Argon2id + AES-256-GCM
+  - ODF 1.2/1.3: PBKDF2 + AES-256-CBC
+
+  Doğru girilen parola, aynı oturumdaki diğer şifreli dosyalarda otomatik denenir. Eski Blowfish şifrelemesi (OpenOffice 2.x) desteklenmez.
+- Build adımı yok; düz HTML, CSS ve JS. `vendor/` altında gömülü: [SheetJS](https://sheetjs.com) 0.20.3, [hash-wasm](https://github.com/Daninet/hash-wasm) 4.13.0 (Argon2).
 
 ## Neler korunur
 
@@ -23,4 +28,4 @@ python3 -m http.server 8000
 
 ## Lisans
 
-MIT. SheetJS, Apache 2.0 lisansıyla dağıtılır (`vendor/xlsx-LICENSE`).
+MIT. SheetJS Apache 2.0 (`vendor/xlsx-LICENSE`), hash-wasm MIT (`vendor/hash-wasm-LICENSE`) lisanslıdır.
