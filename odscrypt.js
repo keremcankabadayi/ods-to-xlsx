@@ -213,18 +213,31 @@
     return m ? new TextDecoder().decode(m) : '';
   }
 
-  async function isEncrypted(bytes) {
+  // Tablo verisini taşıyan dosyalar. Bunlar şifreliyse parola gerekir; diğer şifreli girdiler
+  // (ör. ayrı parolayla korunan Basic makro kütüphaneleri, resimler) xlsx'e zaten aktarılmadığı
+  // için çözülmeden atılır.
+  const ESSENTIAL = /^(content|styles|meta|settings)\.xml$|^encrypted-package$/;
+
+  function encryptedEntries(files) {
+    const manifest = getManifest(files);
+    return { manifest, encrypted: parseManifest(manifest).filter((e) => e.enc) };
+  }
+
+  // Dosyayı dönüştürmek için parola gerekiyor mu?
+  async function needsPassword(bytes) {
     try {
-      return getManifest(await readZip(bytes)).includes('encryption-data');
+      const { encrypted } = encryptedEntries(await readZip(bytes));
+      return encrypted.some((e) => ESSENTIAL.test(e.attrs['manifest:full-path']));
     } catch (e) {
       return false;
     }
   }
 
+  // Şifreli girdileri çözer (parola gerekiyorsa) veya atar; şifresiz bir ODS döndürür.
+  // Şifreli girdi yoksa dosyayı olduğu gibi geri verir.
   async function decrypt(bytes, password) {
     const files = await readZip(bytes);
-    const manifest = getManifest(files);
-    const encrypted = parseManifest(manifest).filter((e) => e.enc);
+    const { manifest, encrypted } = encryptedEntries(files);
     if (!encrypted.length) return bytes;
 
     // LibreOffice 24.2+: tüm paket tek girdi
@@ -244,6 +257,12 @@
       const path = e.attrs['manifest:full-path'];
       const data = files.get(path);
       if (!data) continue;
+      if (!ESSENTIAL.test(path)) {
+        files.delete(path);
+        newManifest = newManifest.replace(e.raw, '');
+        continue;
+      }
+      if (password == null) throw new WrongPasswordError();
       const plain = await decryptEntry(e.enc, password, data);
       files.set(path, await tryInflate(plain));
       const stripped = e.raw
@@ -255,5 +274,5 @@
     return writeZip(files);
   }
 
-  root.OdsCrypt = { isEncrypted, decrypt, WrongPasswordError };
+  root.OdsCrypt = { needsPassword, decrypt, WrongPasswordError };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

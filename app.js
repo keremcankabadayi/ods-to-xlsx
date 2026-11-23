@@ -134,10 +134,15 @@
       if (!/\.f?ods$/i.test(file.name)) throw new Error('Bu bir .ods dosyası değil');
       let data = new Uint8Array(await file.arrayBuffer());
       if (!looksLikeOds(file.name, data.buffer)) throw new Error('Geçerli bir ODS dosyası değil');
-      if (/\.ods$/i.test(file.name) && await OdsCrypt.isEncrypted(data)) {
-        data = await unlock(li, data);
-        li.className = 'item pending';
-        info.textContent = 'Dönüştürülüyor…';
+      if (/\.ods$/i.test(file.name)) {
+        if (await OdsCrypt.needsPassword(data)) {
+          data = await unlock(li, data);
+          li.className = 'item pending';
+          info.textContent = 'Dönüştürülüyor…';
+        } else {
+          // Verisi açık ama makro gibi şifreli ekleri olan dosyalar: ekleri at
+          data = await OdsCrypt.decrypt(data, null);
+        }
       }
       const wb = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
       if (!wb.SheetNames.length) throw new Error('Dosyada sayfa bulunamadı');

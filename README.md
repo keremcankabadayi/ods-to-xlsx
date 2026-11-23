@@ -10,6 +10,7 @@ OpenDocument tablolarını (`.ods`, `.fods`) Excel'in `.xlsx` formatına dönü�
   - LibreOffice 24.2+ varsayılanı: Argon2id + AES-256-GCM
   - ODF 1.2/1.3: PBKDF2 + AES-256-CBC
 
+  Sadece makro kütüphanesi parolalı olan (verisi açık) dosyalar parola sorulmadan dönüştürülür; şifreli makrolar atlanır.
   Doğru girilen parola, aynı oturumdaki diğer şifreli dosyalarda otomatik denenir. Eski Blowfish şifrelemesi (OpenOffice 2.x) desteklenmez.
 - Build adımı yok; düz HTML, CSS ve JS. `vendor/` altında gömülü: [SheetJS](https://sheetjs.com) 0.20.3, [hash-wasm](https://github.com/Daninet/hash-wasm) 4.13.0 (Argon2).
 
