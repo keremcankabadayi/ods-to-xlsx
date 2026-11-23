@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ODS → XLSX Dönüştürücü</title>
+  <meta name="description" content="OpenDocument (.ods) tablolarını tarayıcıda Excel (.xlsx) dosyasına dönüştürün. Dosyalar hiçbir sunucuya yüklenmez.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>ODS → XLSX</h1>
+      <p class="lead">LibreOffice / OpenOffice tablolarını Excel formatına çevirin.
+        <strong>Dosyalarınız bilgisayarınızdan çıkmaz;</strong> dönüşüm tamamen tarayıcıda yapılır.</p>
+    </header>
+
+    <label id="drop" class="drop" tabindex="0">
+      <input id="file" type="file" accept=".ods,.fods,application/vnd.oasis.opendocument.spreadsheet" multiple hidden>
+      <span class="drop-icon" aria-hidden="true">⇪</span>
+      <span class="drop-title">.ods dosyalarını buraya bırakın</span>
+      <span class="drop-sub">veya seçmek için tıklayın (birden fazla dosya olabilir)</span>
+    </label>
+
+    <section id="results" hidden>
+      <div class="results-head">
+        <h2>Dosyalar</h2>
+        <div class="actions">
+          <button id="download-all" type="button" hidden>Tümünü indir</button>
+          <button id="clear" type="button" class="ghost">Temizle</button>
+        </div>
+      </div>
+      <ul id="list"></ul>
+    </section>
+
+    <details class="notes">
+      <summary>Neler korunur, neler korunmaz?</summary>
+      <ul>
+        <li>✔ Veriler, tüm sayfalar, formüller, birleştirilmiş hücreler, sütun genişlikleri, tarihler</li>
+        <li>✘ Hücre renkleri, yazı tipleri, kenarlıklar gibi biçimlendirmeler büyük ölçüde kaybolur</li>
+        <li>✘ Grafikler, resimler ve makrolar aktarılmaz</li>
+      </ul>
+    </details>
+
+    <footer>
+      <a href="https://github.com/keremcankabadayi/ods-to-xlsx">Kaynak kodu</a> ·
+      <a href="https://sheetjs.com">SheetJS</a> ile çalışır
+    </footer>
+  </main>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
